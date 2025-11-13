@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微信公众号 Markdown 编辑器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            background: #f5f5f5;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .editor-panel, .preview-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+
+        .editor-panel {
+            border-right: 1px solid #e0e0e0;
+        }
+
+        .panel-header {
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .panel-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .template-selector {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: white;
+            font-size: 15px;
+            cursor: pointer;
+            outline: none;
+            min-width: 140px;
+            transition: all 0.2s;
+        }
+
+        .template-selector:hover {
+            border-color: #007bff;
+        }
+
+        .template-label {
+            font-size: 16px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .template-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: -80px;
+        }
+
+        .import-btn .upload-icon {
+            color: #07c160;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .copy-btn {
+            padding: 8px 20px;
+            background: #07c160;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        .copy-btn:hover {
+            background: #06ad56;
+        }
+
+        .copy-btn:active {
+            background: #059048;
+        }
+
+        .copy-btn.copied {
+            background: #4CAF50;
+        }
+
+        .import-btn {
+            padding: 6px 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .import-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .import-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        #markdown-input {
+            flex: 1;
+            padding: 20px;
+            border: none;
+            outline: none;
+            resize: none;
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .preview-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: white;
+        }
+
+        #preview {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* 模板1：简约专业 */
+        .template-minimal h1,
+        .template-minimal h2,
+        .template-minimal h3 {
+            color: #2c3e50;
+            margin: 20px 0 15px 0;
+            font-weight: 600;
+        }
+
+        .template-minimal h1 {
+            font-size: 28px;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        .template-minimal h2 {
+            font-size: 24px;
+            border-left: 4px solid #3498db;
+            padding-left: 12px;
+        }
+
+        .template-minimal h3 {
+            font-size: 20px;
+            color: #34495e;
+        }
+
+        .template-minimal p {
+            margin: 12px 0;
+            line-height: 1.8;
+            color: #34495e;
+            font-size: 16px;
+        }
+
+        .template-minimal code {
+            background: #f7f7f7;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #e74c3c;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 14px;
+        }
+
+        .template-minimal pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+
+        .template-minimal pre code {
+            background: transparent;
+            color: #ecf0f1;
+            padding: 0;
+        }
+
+        .template-minimal ul, .template-minimal ol {
+            margin: 15px 0;
+            padding-left: 30px;
+        }
+
+        .template-minimal li {
+            margin: 8px 0;
+            line-height: 1.8;
+            color: #34495e;
+        }
+
+        .template-minimal strong {
+            color: #2c3e50;
+            font-weight: 600;
+        }
+
+        .template-minimal table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+
+        .template-minimal th {
+            background: #3498db;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .template-minimal td {
+            padding: 12px;
+            border: 1px solid #e0e0e0;
+            color: #34495e;
+        }
+
+        .template-minimal tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        .template-minimal hr {
+            border: none;
+            border-top: 2px solid #e0e0e0;
+            margin: 25px 0;
+        }
+
+        .template-minimal blockquote {
+            border-left: 4px solid #3498db;
+            padding-left: 15px;
+            margin: 15px 0;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+
+        /* 模板2：科技蓝 */
+        .template-tech h1,
+        .template-tech h2,
+        .template-tech h3 {
+            color: #0066cc;
+            margin: 20px 0 15px 0;
+            font-weight: 600;
+        }
+
+        .template-tech h1 {
+            font-size: 28px;
+            background: linear-gradient(90deg, #0066cc, #00aaff);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 6px;
+        }
+
+        .template-tech h2 {
+            font-size: 24px;
+            border-bottom: 2px solid #0066cc;
+            padding-bottom: 8px;
+        }
+
+        .template-tech h3 {
+            font-size: 20px;
+            color: #0088dd;
+        }
+
+        .template-tech p {
+            margin: 12px 0;
+            line-height: 1.8;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .template-tech code {
+            background: #e8f4f8;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #0066cc;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 14px;
+        }
+
+        .template-tech pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 15px 0;
+            border-left: 4px solid #0066cc;
+        }
+
+        .template-tech pre code {
+            background: transparent;
+            color: #d4d4d4;
+            padding: 0;
+        }
+
+        .template-tech ul, .template-tech ol {
+            margin: 15px 0;
+            padding-left: 30px;
+        }
+
+        .template-tech li {
+            margin: 8px 0;
+            line-height: 1.8;
+            color: #333;
+        }
+
+        .template-tech strong {
+            color: #0066cc;
+            font-weight: 600;
+        }
+
+        .template-tech table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            border: 1px solid #0066cc;
+        }
+
+        .template-tech th {
+            background: #0066cc;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .template-tech td {
+            padding: 12px;
+            border: 1px solid #ddd;
+            color: #333;
+        }
+
+        .template-tech tr:nth-child(even) {
+            background: #f0f8ff;
+        }
+
+        .template-tech hr {
+            border: none;
+            border-top: 2px dashed #0066cc;
+            margin: 25px 0;
+        }
+
+        .template-tech blockquote {
+            border-left: 4px solid #0066cc;
+            background: #f0f8ff;
+            padding: 15px;
+            margin: 15px 0;
+            color: #555;
+            border-radius: 4px;
+        }
+
+        /* 模板3：优雅黑 */
+        .template-elegant h1,
+        .template-elegant h2,
+        .template-elegant h3 {
+            color: #1a1a1a;
+            margin: 20px 0 15px 0;
+            font-weight: 600;
+        }
+
+        .template-elegant h1 {
+            font-size: 32px;
+            text-align: center;
+            border-bottom: 1px solid #333;
+            padding-bottom: 15px;
+            letter-spacing: 2px;
+        }
+
+        .template-elegant h2 {
+            font-size: 24px;
+            border-left: 6px solid #333;
+            padding-left: 15px;
+        }
+
+        .template-elegant h3 {
+            font-size: 20px;
+            color: #333;
+        }
+
+        .template-elegant p {
+            margin: 12px 0;
+            line-height: 2;
+            color: #3a3a3a;
+            font-size: 16px;
+        }
+
+        .template-elegant code {
+            background: #f0f0f0;
+            padding: 3px 8px;
+            border-radius: 4px;
+            color: #c7254e;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 14px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .template-elegant pre {
+            background: #282c34;
+            color: #abb2bf;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .template-elegant pre code {
+            background: transparent;
+            color: #abb2bf;
+            padding: 0;
+            border: none;
+        }
+
+        .template-elegant ul, .template-elegant ol {
+            margin: 15px 0;
+            padding-left: 30px;
+        }
+
+        .template-elegant li {
+            margin: 10px 0;
+            line-height: 2;
+            color: #3a3a3a;
+        }
+
+        .template-elegant strong {
+            color: #1a1a1a;
+            font-weight: 700;
+        }
+
+        .template-elegant table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .template-elegant th {
+            background: #333;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .template-elegant td {
+            padding: 15px;
+            border: 1px solid #e8e8e8;
+            color: #3a3a3a;
+        }
+
+        .template-elegant tr:nth-child(even) {
+            background: #fafafa;
+        }
+
+        .template-elegant hr {
+            border: none;
+            border-top: 1px solid #d0d0d0;
+            margin: 30px 0;
+        }
+
+        .template-elegant blockquote {
+            border-left: 5px solid #333;
+            padding-left: 20px;
+            margin: 15px 0;
+            color: #666;
+            font-style: italic;
+            font-size: 15px;
+        }
+
+        /* 模板4：清新绿 */
+        .template-fresh h1,
+        .template-fresh h2,
+        .template-fresh h3 {
+            color: #2d8659;
+            margin: 20px 0 15px 0;
+            font-weight: 600;
+        }
+
+        .template-fresh h1 {
+            font-size: 28px;
+            background: linear-gradient(135deg, #2d8659, #3cb371);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+        }
+
+        .template-fresh h2 {
+            font-size: 24px;
+            border-bottom: 3px solid #3cb371;
+            padding-bottom: 8px;
+            color: #2d8659;
+        }
+
+        .template-fresh h3 {
+            font-size: 20px;
+            color: #3cb371;
+        }
+
+        .template-fresh p {
+            margin: 12px 0;
+            line-height: 1.8;
+            color: #444;
+            font-size: 16px;
+        }
+
+        .template-fresh code {
+            background: #e8f5e9;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #2d8659;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 14px;
+        }
+
+        .template-fresh pre {
+            background: #263238;
+            color: #aed581;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 15px 0;
+            border-left: 4px solid #3cb371;
+        }
+
+        .template-fresh pre code {
+            background: transparent;
+            color: #aed581;
+            padding: 0;
+        }
+
+        .template-fresh ul, .template-fresh ol {
+            margin: 15px 0;
+            padding-left: 30px;
+        }
+
+        .template-fresh li {
+            margin: 8px 0;
+            line-height: 1.8;
+            color: #444;
+        }
+
+        .template-fresh strong {
+            color: #2d8659;
+            font-weight: 600;
+        }
+
+        .template-fresh table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+
+        .template-fresh th {
+            background: #3cb371;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .template-fresh td {
+            padding: 12px;
+            border: 1px solid #e0e0e0;
+            color: #444;
+        }
+
+        .template-fresh tr:nth-child(even) {
+            background: #f1f8f4;
+        }
+
+        .template-fresh hr {
+            border: none;
+            border-top: 2px solid #c8e6c9;
+            margin: 25px 0;
+        }
+
+        .template-fresh blockquote {
+            border-left: 4px solid #3cb371;
+            background: #f1f8f4;
+            padding: 15px;
+            margin: 15px 0;
+            color: #555;
+            border-radius: 4px;
+        }
+
+        /* 模板5：极简黑白 */
+        .template-minimal-bw h1,
+        .template-minimal-bw h2,
+        .template-minimal-bw h3 {
+            color: #000000;
+            margin: 20px 0 15px 0;
+            font-weight: 700;
+        }
+
+        .template-minimal-bw h1 {
+            font-size: 32px;
+            border-bottom: 3px solid #000000;
+            padding-bottom: 12px;
+        }
+
+        .template-minimal-bw h2 {
+            font-size: 26px;
+            border-bottom: 2px solid #333333;
+            padding-bottom: 10px;
+        }
+
+        .template-minimal-bw h3 {
+            font-size: 22px;
+            color: #333333;
+        }
+
+        .template-minimal-bw p {
+            margin: 12px 0;
+            line-height: 2;
+            color: #000000;
+            font-size: 16px;
+        }
+
+        .template-minimal-bw code {
+            background: #f5f5f5;
+            padding: 3px 8px;
+            border-radius: 3px;
+            color: #000000;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 14px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .template-minimal-bw pre {
+            background: #f5f5f5;
+            color: #000000;
+            padding: 20px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 15px 0;
+            border: 1px solid #d0d0d0;
+        }
+
+        .template-minimal-bw pre code {
+            background: transparent;
+            color: #000000;
+            padding: 0;
+            border: none;
+        }
+
+        .template-minimal-bw ul, .template-minimal-bw ol {
+            margin: 15px 0;
+            padding-left: 30px;
+        }
+
+        .template-minimal-bw li {
+            margin: 10px 0;
+            line-height: 2;
+            color: #000000;
+        }
+
+        .template-minimal-bw strong {
+            color: #000000;
+            font-weight: 700;
+        }
+
+        .template-minimal-bw table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            border: 2px solid #000000;
+        }
+
+        .template-minimal-bw th {
+            background: #000000;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 700;
+        }
+
+        .template-minimal-bw td {
+            padding: 15px;
+            border: 1px solid #d0d0d0;
+            color: #000000;
+        }
+
+        .template-minimal-bw tr:nth-child(even) {
+            background: #fafafa;
+        }
+
+        .template-minimal-bw hr {
+            border: none;
+            border-top: 2px solid #000000;
+            margin: 30px 0;
+        }
+
+        .template-minimal-bw blockquote {
+            border-left: 5px solid #000000;
+            padding-left: 20px;
+            margin: 15px 0;
+            color: #333333;
+            font-style: italic;
+        }
+
+        /* 模板6：暖橙活力 */
+        .template-warm-orange h1,
+        .template-warm-orange h2,
+        .template-warm-orange h3 {
+            color: #ff6b35;
+            margin: 20px 0 15px 0;
+            font-weight: 600;
+        }
+
+        .template-warm-orange h1 {
+            font-size: 28px;
+            background: linear-gradient(135deg, #ff6b35, #f77f00);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+        }
+
+        .template-warm-orange h2 {
+            font-size: 24px;
+            border-bottom: 3px solid #ff6b35;
+            padding-bottom: 8px;
+        }
+
+        .template-warm-orange h3 {
+            font-size: 20px;
+            color: #f77f00;
+        }
+
+        .template-warm-orange p {
+            margin: 12px 0;
+            line-height: 1.8;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .template-warm-orange code {
+            background: #fff4ed;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #ff6b35;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 14px;
+        }
+
+        .template-warm-orange pre {
+            background: #2d2d2d;
+            color: #ffb088;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 15px 0;
+            border-left: 4px solid #ff6b35;
+        }
+
+        .template-warm-orange pre code {
+            background: transparent;
+            color: #ffb088;
+            padding: 0;
+        }
+
+        .template-warm-orange ul, .template-warm-orange ol {
+            margin: 15px 0;
+            padding-left: 30px;
+        }
+
+        .template-warm-orange li {
+            margin: 8px 0;
+            line-height: 1.8;
+            color: #333;
+        }
+
+        .template-warm-orange strong {
+            color: #ff6b35;
+            font-weight: 600;
+        }
+
+        .template-warm-orange table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+
+        .template-warm-orange th {
+            background: #ff6b35;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .template-warm-orange td {
+            padding: 12px;
+            border: 1px solid #e0e0e0;
+            color: #333;
+        }
+
+        .template-warm-orange tr:nth-child(even) {
+            background: #fff9f5;
+        }
+
+        .template-warm-orange hr {
+            border: none;
+            border-top: 2px solid #ff6b35;
+            margin: 25px 0;
+        }
+
+        .template-warm-orange blockquote {
+            border-left: 4px solid #ff6b35;
+            background: #fff4ed;
+            padding: 15px;
+            margin: 15px 0;
+            color: #555;
+            border-radius: 4px;
+        }
+
+        /* 模板7：深色护眼 */
+        .template-dark h1,
+        .template-dark h2,
+        .template-dark h3 {
+            color: #88c0d0;
+            margin: 20px 0 15px 0;
+            font-weight: 600;
+        }
+
+        .template-dark {
+            background: #2e3440;
+            padding: 20px;
+        }
+
+        .template-dark h1 {
+            font-size: 28px;
+            background: linear-gradient(135deg, #5e81ac, #88c0d0);
+            color: #eceff4;
+            padding: 15px 20px;
+            border-radius: 8px;
+        }
+
+        .template-dark h2 {
+            font-size: 24px;
+            border-bottom: 3px solid #5e81ac;
+            padding-bottom: 8px;
+            color: #81a1c1;
+        }
+
+        .template-dark h3 {
+            font-size: 20px;
+            color: #88c0d0;
+        }
+
+        .template-dark p {
+            margin: 12px 0;
+            line-height: 1.8;
+            color: #d8dee9;
+            font-size: 16px;
+        }
+
+        .template-dark code {
+            background: #3b4252;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #8fbcbb;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 14px;
+        }
+
+        .template-dark pre {
+            background: #3b4252;
+            color: #d8dee9;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 15px 0;
+            border-left: 4px solid #5e81ac;
+        }
+
+        .template-dark pre code {
+            background: transparent;
+            color: #d8dee9;
+            padding: 0;
+        }
+
+        .template-dark ul, .template-dark ol {
+            margin: 15px 0;
+            padding-left: 30px;
+        }
+
+        .template-dark li {
+            margin: 8px 0;
+            line-height: 1.8;
+            color: #d8dee9;
+        }
+
+        .template-dark strong {
+            color: #88c0d0;
+            font-weight: 600;
+        }
+
+        .template-dark table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+
+        .template-dark th {
+            background: #5e81ac;
+            color: #eceff4;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .template-dark td {
+            padding: 12px;
+            border: 1px solid #4c566a;
+            color: #d8dee9;
+        }
+
+        .template-dark tr:nth-child(even) {
+            background: #3b4252;
+        }
+
+        .template-dark hr {
+            border: none;
+            border-top: 2px solid #4c566a;
+            margin: 25px 0;
+        }
+
+        .template-dark blockquote {
+            border-left: 4px solid #5e81ac;
+            background: #3b4252;
+            padding: 15px;
+            margin: 15px 0;
+            color: #d8dee9;
+            border-radius: 4px;
+        }
+
+        /* 模板8：商务正式 */
+        .template-business h1,
+        .template-business h2,
+        .template-business h3 {
+            color: #1a3a52;
+            margin: 20px 0 15px 0;
+            font-weight: 600;
+        }
+
+        .template-business h1 {
+            font-size: 28px;
+            background: linear-gradient(135deg, #1a3a52, #2c5f7c);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 6px;
+        }
+
+        .template-business h2 {
+            font-size: 24px;
+            border-left: 5px solid #1a3a52;
+            padding-left: 15px;
+            color: #1a3a52;
+        }
+
+        .template-business h3 {
+            font-size: 20px;
+            color: #2c5f7c;
+        }
+
+        .template-business p {
+            margin: 12px 0;
+            line-height: 1.9;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .template-business code {
+            background: #e8f1f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #1a3a52;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 14px;
+        }
+
+        .template-business pre {
+            background: #1e1e1e;
+            color: #a9b7c6;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 15px 0;
+            border-left: 4px solid #2c5f7c;
+        }
+
+        .template-business pre code {
+            background: transparent;
+            color: #a9b7c6;
+            padding: 0;
+        }
+
+        .template-business ul, .template-business ol {
+            margin: 15px 0;
+            padding-left: 30px;
+        }
+
+        .template-business li {
+            margin: 8px 0;
+            line-height: 1.9;
+            color: #333;
+        }
+
+        .template-business strong {
+            color: #1a3a52;
+            font-weight: 600;
+        }
+
+        .template-business table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            box-shadow: 0 2px 8px rgba(26, 58, 82, 0.1);
+        }
+
+        .template-business th {
+            background: #1a3a52;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .template-business td {
+            padding: 15px;
+            border: 1px solid #d0d9e0;
+            color: #333;
+        }
+
+        .template-business tr:nth-child(even) {
+            background: #f5f8fa;
+        }
+
+        .template-business hr {
+            border: none;
+            border-top: 2px solid #d0d9e0;
+            margin: 30px 0;
+        }
+
+        .template-business blockquote {
+            border-left: 5px solid #1a3a52;
+            background: #e8f1f5;
+            padding: 15px 20px;
+            margin: 15px 0;
+            color: #555;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 左侧编辑器 -->
+        <div class="editor-panel">
+            <div class="panel-header">
+                <div class="panel-header-left">
+                    <div class="panel-title">Markdown 编辑</div>
+                    <button id="import-btn" class="import-btn">
+                        <span class="upload-icon">⬆</span>
+                        <span>导入 Markdown 文件</span>
+                    </button>
+                    <input type="file" id="file-input" accept=".md,.markdown,.txt" />
+                </div>
+            </div>
+            <textarea id="markdown-input" placeholder="在这里输入 Markdown 内容..."></textarea>
+        </div>
+
+        <!-- 右侧预览 -->
+        <div class="preview-panel">
+            <div class="panel-header">
+                <div class="panel-title">预览效果</div>
+                <div class="template-controls">
+                    <span class="template-label">选择模板：</span>
+                    <select id="template-selector" class="template-selector">
+                        <option value="template-minimal">简约专业</option>
+                        <option value="template-tech">科技蓝</option>
+                        <option value="template-elegant">优雅黑</option>
+                        <option value="template-fresh">清新绿</option>
+                        <option value="template-minimal-bw">极简黑白</option>
+                        <option value="template-warm-orange">暖橙活力</option>
+                        <option value="template-dark">深色护眼</option>
+                        <option value="template-business">商务正式</option>
+                    </select>
+                    <button id="copy-btn" class="copy-btn">复制 HTML</button>
+                </div>
+            </div>
+            <div class="preview-content">
+                <div id="preview" class="template-minimal"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入 marked.js -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <script>
+        const markdownInput = document.getElementById('markdown-input');
+        const preview = document.getElementById('preview');
+        const templateSelector = document.getElementById('template-selector');
+        const copyBtn = document.getElementById('copy-btn');
+
+        // 配置 marked
+        marked.setOptions({
+            breaks: true,
+            gfm: true
+        });
+
+        // 更新预览
+        function updatePreview() {
+            const markdown = markdownInput.value;
+            const html = marked.parse(markdown);
+            preview.innerHTML = html;
+        }
+
+        // 切换模板
+        function changeTemplate() {
+            const selectedTemplate = templateSelector.value;
+            preview.className = selectedTemplate;
+        }
+
+        // CSS 转内联样式
+        function cssToInlineStyles(element) {
+            // 创建一个临时容器来处理
+            const container = document.createElement('div');
+            container.innerHTML = element.innerHTML;
+            container.className = element.className;
+
+            // 临时添加到 DOM 以获取计算样式
+            container.style.position = 'absolute';
+            container.style.left = '-9999px';
+            document.body.appendChild(container);
+
+            // 需要转换为内联样式的CSS属性
+            const importantProps = [
+                'color', 'background', 'background-color', 'font-size', 'font-weight',
+                'font-family', 'line-height', 'margin', 'margin-top', 'margin-bottom',
+                'margin-left', 'margin-right', 'padding', 'padding-top', 'padding-bottom',
+                'padding-left', 'padding-right', 'border', 'border-top', 'border-bottom',
+                'border-left', 'border-right', 'border-radius', 'text-align',
+                'font-style', 'text-decoration', 'width', 'border-collapse',
+                'overflow-x', 'letter-spacing', 'box-shadow'
+            ];
+
+            // 递归处理所有元素
+            function applyStylesToElement(sourceEl, targetEl) {
+                const computedStyle = window.getComputedStyle(sourceEl);
+                const styles = [];
+
+                importantProps.forEach(prop => {
+                    const value = computedStyle.getPropertyValue(prop);
+                    if (value && value !== 'none' && value !== 'normal') {
+                        styles.push(`${prop}: ${value}`);
+                    }
+                });
+
+                if (styles.length > 0) {
+                    targetEl.setAttribute('style', styles.join('; '));
+                }
+
+                // 递归处理子元素
+                const sourceChildren = sourceEl.children;
+                const targetChildren = targetEl.children;
+                for (let i = 0; i < sourceChildren.length; i++) {
+                    if (targetChildren[i]) {
+                        applyStylesToElement(sourceChildren[i], targetChildren[i]);
+                    }
+                }
+            }
+
+            // 应用样式
+            applyStylesToElement(container, container);
+
+            // 获取 HTML
+            const result = container.innerHTML;
+
+            // 清理
+            document.body.removeChild(container);
+
+            return result;
+        }
+
+        // 复制富文本（带格式）
+        async function copyHTML() {
+            const inlineHTML = cssToInlineStyles(preview);
+
+            try {
+                // 方法1：使用现代 Clipboard API 复制富文本
+                const blob = new Blob([inlineHTML], { type: 'text/html' });
+                const clipboardItem = new ClipboardItem({
+                    'text/html': blob
+                });
+
+                await navigator.clipboard.write([clipboardItem]);
+
+                copyBtn.textContent = '✓ 已复制';
+                copyBtn.classList.add('copied');
+
+                setTimeout(() => {
+                    copyBtn.textContent = '复制 HTML';
+                    copyBtn.classList.remove('copied');
+                }, 2000);
+            } catch (err) {
+                // 降级到传统方法
+                console.log('使用传统复制方法', err);
+                copyHTMLFallback(inlineHTML);
+            }
+        }
+
+        // 传统复制方法（兜底方案）
+        function copyHTMLFallback(html) {
+            try {
+                // 创建临时可编辑区域
+                const tempDiv = document.createElement('div');
+                tempDiv.contentEditable = 'true';
+                tempDiv.innerHTML = html;
+                tempDiv.style.position = 'fixed';
+                tempDiv.style.left = '-9999px';
+                document.body.appendChild(tempDiv);
+
+                // 选中内容
+                const range = document.createRange();
+                range.selectNodeContents(tempDiv);
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(range);
+
+                // 执行复制
+                const success = document.execCommand('copy');
+
+                // 清理
+                selection.removeAllRanges();
+                document.body.removeChild(tempDiv);
+
+                if (success) {
+                    copyBtn.textContent = '✓ 已复制';
+                    copyBtn.classList.add('copied');
+                    setTimeout(() => {
+                        copyBtn.textContent = '复制 HTML';
+                        copyBtn.classList.remove('copied');
+                    }, 2000);
+                } else {
+                    alert('复制失败，请手动复制');
+                }
+            } catch (err) {
+                alert('复制失败，请手动复制');
+                console.error('复制失败:', err);
+            }
+        }
+
+        // 导入文件
+        const importBtn = document.getElementById('import-btn');
+        const fileInput = document.getElementById('file-input');
+
+        importBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                markdownInput.value = event.target.result;
+                updatePreview();
+            };
+            reader.readAsText(file, 'UTF-8');
+
+            // 清空文件选择，允许重复导入同一文件
+            fileInput.value = '';
+        });
+
+        // 事件监听
+        markdownInput.addEventListener('input', updatePreview);
+        templateSelector.addEventListener('change', changeTemplate);
+        copyBtn.addEventListener('click', copyHTML);
+
+        // 初始化
+        updatePreview();
+    </script>
+</body>
+</html>
