@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="referrer" content="no-referrer">
+  <title>公众号文章转 Markdown</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: #f5f5f5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      text-align: center;
+      padding: 20px;
+      background: #fff;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    header h1 {
+      font-size: 24px;
+      color: #333;
+      margin-bottom: 8px;
+    }
+
+    header p {
+      font-size: 14px;
+      color: #666;
+    }
+
+    .container {
+      display: flex;
+      flex: 1;
+      gap: 1px;
+      background: #e0e0e0;
+    }
+
+    .panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+    }
+
+    .panel-header {
+      padding: 12px 16px;
+      background: #fafafa;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .panel-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: #333;
+    }
+
+    .copy-btn {
+      padding: 6px 12px;
+      font-size: 12px;
+      background: #07C160;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .copy-btn:hover {
+      background: #06ae56;
+    }
+
+    .copy-btn:active {
+      background: #059a4c;
+    }
+
+    .editor {
+      flex: 1;
+      padding: 16px;
+      font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+      font-size: 14px;
+      line-height: 1.6;
+      border: none;
+      outline: none;
+      resize: none;
+      background: #fff;
+    }
+
+    .preview {
+      flex: 1;
+      padding: 16px;
+      overflow: auto;
+      line-height: 1.8;
+    }
+
+    /* Markdown 预览样式 */
+    .preview h1, .preview h2, .preview h3, .preview h4, .preview h5, .preview h6 {
+      margin: 16px 0 8px;
+      font-weight: 600;
+    }
+
+    .preview h1 { font-size: 24px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+    .preview h2 { font-size: 20px; border-bottom: 1px solid #eee; padding-bottom: 6px; }
+    .preview h3 { font-size: 18px; }
+    .preview h4 { font-size: 16px; }
+
+    .preview p {
+      margin: 12px 0;
+    }
+
+    .preview ul, .preview ol {
+      margin: 12px 0;
+      padding-left: 24px;
+    }
+
+    .preview li {
+      margin: 4px 0;
+    }
+
+    .preview code {
+      background: #f5f5f5;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: "Monaco", "Menlo", monospace;
+      font-size: 13px;
+    }
+
+    .preview pre {
+      background: #f5f5f5;
+      padding: 12px;
+      border-radius: 4px;
+      overflow-x: auto;
+      margin: 12px 0;
+    }
+
+    .preview pre code {
+      background: none;
+      padding: 0;
+    }
+
+    .preview blockquote {
+      border-left: 4px solid #ddd;
+      padding-left: 16px;
+      margin: 12px 0;
+      color: #666;
+    }
+
+    .preview table {
+      border-collapse: collapse;
+      margin: 12px 0;
+      width: 100%;
+    }
+
+    .preview th, .preview td {
+      border: 1px solid #ddd;
+      padding: 8px 12px;
+      text-align: left;
+    }
+
+    .preview th {
+      background: #f5f5f5;
+    }
+
+    .preview a {
+      color: #1890ff;
+      text-decoration: none;
+    }
+
+    .preview a:hover {
+      text-decoration: underline;
+    }
+
+    .preview img {
+      max-width: 100%;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #333;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 4px;
+      font-size: 14px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      opacity: 1;
+    }
+
+    /* 加载状态 */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.9);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      transition: opacity 0.3s;
+    }
+
+    .loading-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .loading-text {
+      font-size: 16px;
+      color: #666;
+    }
+
+    .loading-text::after {
+      content: '';
+      animation: dots 1.5s infinite;
+    }
+
+    @keyframes dots {
+      0%, 20% { content: ''; }
+      40% { content: '.'; }
+      60% { content: '..'; }
+      80%, 100% { content: '...'; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>公众号文章转 Markdown</h1>
+    <p>在公众号文章中全选内容，复制后粘贴到左侧编辑区，即可自动转换</p>
+  </header>
+
+  <div class="container">
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Markdown</span>
+        <button class="copy-btn" onclick="copyMarkdown()">复制 Markdown</button>
+      </div>
+      <textarea class="editor" id="editor" placeholder="粘贴公众号文章内容到这里..."></textarea>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">预览</span>
+      </div>
+      <div class="preview" id="preview"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">已复制到剪贴板</div>
+
+  <!-- 加载提示 -->
+  <div class="loading-overlay" id="loading">
+    <span class="loading-text">引擎加载中</span>
+  </div>
+
+  <!-- 使用 unpkg CDN（国内更快） -->
+  <script>
+    const editor = document.getElementById('editor');
+    const preview = document.getElementById('preview');
+    const toast = document.getElementById('toast');
+    const loading = document.getElementById('loading');
+
+    let lute = null;
+
+    // 单个 CDN 加载（unpkg 国内较快）
+    function loadLute() {
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/vditor@3.11.2/dist/js/lute/lute.min.js';
+      script.onload = function() {
+        if (typeof Lute !== 'undefined') {
+          lute = Lute.New();
+          console.log('Lute 加载成功');
+          loading.classList.add('hidden');
+        }
+      };
+      script.onerror = function() {
+        loading.innerHTML = '<span style="color: #e74c3c;">引擎加载失败，请刷新重试</span>';
+      };
+      document.head.appendChild(script);
+    }
+
+    // 开始加载
+    loadLute();
+
+    // 实时预览：Markdown -> HTML
+    function updatePreview() {
+      const markdown = editor.value;
+      if (markdown.trim() && lute) {
+        preview.innerHTML = lute.MarkdownStr('', markdown);
+      } else if (markdown.trim()) {
+        preview.innerHTML = '<pre>' + markdown.replace(/</g, '&lt;') + '</pre>';
+      } else {
+        preview.innerHTML = '<p style="color: #999;">预览区域</p>';
+      }
+    }
+
+    // 监听输入，实时更新预览
+    editor.addEventListener('input', updatePreview);
+
+    // 监听粘贴事件
+    editor.addEventListener('paste', function(e) {
+      const html = e.clipboardData.getData('text/html');
+
+      if (html && html.trim() && lute) {
+        e.preventDefault();
+        let markdown = lute.HTML2Md(html);
+
+        // 调试：看看转换后的原始内容
+        console.log('转换前:', markdown);
+
+        // 后处理
+        // 1. 删除所有零宽字符
+        markdown = markdown.replace(/[\u200B\u200C\u200D\uFEFF]/g, '');
+        // 2. 合并连续加粗 ****
+        markdown = markdown.replace(/\*\*\*\*/g, '');
+
+        console.log('转换后:', markdown);
+
+        const start = editor.selectionStart;
+        const end = editor.selectionEnd;
+        const text = editor.value;
+
+        editor.value = text.substring(0, start) + markdown + text.substring(end);
+        const newPos = start + markdown.length;
+        editor.setSelectionRange(newPos, newPos);
+
+        updatePreview();
+      } else if (html && html.trim() && !lute) {
+        showToast('引擎加载中，请稍候...');
+      }
+    });
+
+    // 复制 Markdown
+    function copyMarkdown() {
+      const text = editor.value;
+      if (!text.trim()) {
+        showToast('没有内容可复制');
+        return;
+      }
+
+      navigator.clipboard.writeText(text).then(() => {
+        showToast('已复制到剪贴板');
+      }).catch(() => {
+        editor.select();
+        document.execCommand('copy');
+        showToast('已复制到剪贴板');
+      });
+    }
+
+    // 显示提示
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 2000);
+    }
+
+    // 初始化预览
+    updatePreview();
+  </script>
+</body>
+</html>
